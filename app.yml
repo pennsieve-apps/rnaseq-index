@@ -21,11 +21,12 @@ application:
     - quantification
     - salmon
 runtime:
-  cpu: 8192
-  # Measured (linux/amd64 image, emulated, 4 CPUs): mouse GENCODE M39 transcripts only 174 s,
-  # 3.8 GB salmon peak. With the GRCm39 genome as decoys the build was killed at 7 GB (> 6.3 GB
-  # salmon RSS, 2.2 billion k-mers): 30 GiB is an estimate, not a measurement (README "Runtime").
-  memory: 30720
+  cpu: 4096
+  # Sized for a transcripts-only index (measured, linux/amd64 image, emulated, 4 CPUs: mouse
+  # GENCODE M39 174 s, 3.8 GB salmon peak). A build with the genome as decoys needs far more
+  # (killed at 7 GB locally, 2.2 billion k-mers): give that step 8 vCPU / 32 GiB, an estimate
+  # (README "Runtime"). Sizes must be valid Fargate pairs (8 vCPU: 16-60 GiB in 4 GiB steps).
+  memory: 16384
   computeTypes:
     - standard
   timeoutSeconds: 14400

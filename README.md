@@ -70,7 +70,7 @@ in `provenance.json`.
 
 ## Runtime
 
-`computeTypes: [standard]`, 8 vCPU / 30 GiB, 4 h timeout. salmon's external k-mer sort gets
+`computeTypes: [standard]`, 4 vCPU / 16 GiB, 4 h timeout: sized for a transcripts-only index. For a build with the genome as decoys, give the step 8 vCPU / 32 GiB (an estimate, below). salmon's external k-mer sort gets
 half of the container's memory (`--ramLimit`). The build's scratch files (cleaned FASTA,
 compacted de Bruijn graph, sort buckets) go to `/tmp`: 3.9 GB at most for the mouse
 transcriptome (measured) and at least 7.6 GB with the genome as decoys (seen before that build
@@ -91,11 +91,11 @@ timings from `provenance.json`:
 
 The decoy build could not be measured within the 8 GB local Docker. salmon's documentation
 says only that whole-genome decoys "require considerably more memory to build the index"
-(salmon docs, mapping-based mode) and gives no number for salmon 2. The 30 GiB / 8 vCPU
-default is therefore a conservative estimate (12× the k-mers; failed above 6.3 GB), not a
-measurement: run the
-decoy build once on `standard` with that size and check `peak_rss_mb` in `provenance.json`.
-The transcripts-only index fits in 8 GiB.
+(salmon docs, mapping-based mode) and gives no number for salmon 2. The 32 GiB / 8 vCPU
+for a decoy build is therefore a conservative estimate (12× the k-mers; failed above 6.3 GB), not a
+measurement: run the decoy build once on `standard` with that size and check `peak_rss_mb` in
+`provenance.json`. The transcripts-only index fits in the default 16 GiB with room to spare.
+(v0.1.0 declared 8 vCPU / 30 GiB, which is not a size Fargate offers; the platform refused the step.)
 
 Image: 213 MB (salmon 22 MB + python:3.12-slim).
 
