@@ -1,0 +1,105 @@
+# yaml-language-server: $schema=https://schemas.pennsieve.io/app-manifest/v1.json
+schemaVersion: "1.0"
+application:
+  name: RNA-seq Reference Index
+  description: >-
+    Builds the reference that bulk RNA-seq quantification (rnaseq-quant) needs, once per genome
+    and annotation release, to keep as a workspace reference: a salmon index of the transcript
+    sequences (selective-alignment, k = 31), with the whole genome added as decoys when a
+    genome FASTA is given so reads from unannotated regions are not forced onto transcripts,
+    plus a transcript-to-gene table (tx2gene.csv), a gene table with names, types, chromosome
+    and exonic length (genes.csv), and index.json (organism, annotation source, input
+    checksums, salmon version, decoys). Works with GENCODE and Ensembl transcript FASTA + GTF
+    for any organism.
+  type: processor
+  tags:
+    - bulk-rna-seq
+    - transcriptomics
+    - genomics
+    - reference
+    - indexing
+    - quantification
+    - salmon
+runtime:
+  cpu: 8192
+  # Measured in the linux/amd64 image; see README "Runtime". Mouse GENCODE M39 transcripts only:
+  # see README; with the whole genome as decoys salmon's build needs more (sized below).
+  memory: 30720
+  computeTypes:
+    - standard
+  timeoutSeconds: 14400
+parameters:
+  - name: KMER_LEN
+    type: integer
+    label: k-mer length
+    description: >-
+      salmon's k (odd, 15-31). 31 suits reads of 75 bp and longer; use a smaller k (e.g. 23
+      or 25) for reads shorter than about 50 bp.
+    defaultValue: 31
+    min: 15
+    max: 31
+  - name: ORGANISM
+    type: string
+    label: Organism
+    description: >-
+      Written to index.json. Empty: read from a GENCODE GTF header (human, mouse) or an Ensembl
+      GTF file name (Genus_species.Assembly.Release.gtf.gz).
+    defaultValue: ""
+  - name: SOURCE
+    type: string
+    label: Annotation source
+    description: >-
+      Written to index.json (e.g. "GENCODE M39"). Empty: read from the GTF header or file name,
+      else the GTF file name.
+    defaultValue: ""
+  - name: THREADS
+    type: integer
+    label: Threads
+    description: Threads for salmon index; 0 = from the container's CPU quota.
+    defaultValue: 0
+    min: 0
+inputs:
+  - name: transcriptome
+    description: >-
+      The transcript sequences: one FASTA (.fa, .fasta, .fna, optionally gzipped), e.g. GENCODE
+      gencode.vM39.transcripts.fa.gz or Ensembl *.cdna.all.fa.gz (add *.ncrna.fa.gz content to
+      the same file for non-coding genes).
+    mediaTypes:
+      - text/x-fasta
+      - application/gzip
+    formats:
+      - format_1929
+    placement: subfolder
+    required: true
+  - name: genome
+    description: >-
+      Optional: the genome FASTA of the same assembly (e.g. GRCm39.primary_assembly.genome.fa.gz),
+      indexed as decoy sequences. Recommended; needs much more memory and time (see README).
+    mediaTypes:
+      - text/x-fasta
+      - application/gzip
+    formats:
+      - format_1929
+    placement: subfolder
+    required: false
+  - name: annotation
+    description: >-
+      The GTF of the same release as the transcriptome (e.g. gencode.vM39.annotation.gtf.gz):
+      gives each transcript its gene, gene names and types, chromosomes and gene lengths.
+    mediaTypes:
+      - application/gzip
+    formats:
+      - format_2306
+    placement: subfolder
+    required: true
+outputs:
+  - name: index
+    description: >-
+      salmon/ (the salmon index), tx2gene.csv (transcript_id, gene_id, gene_name, gene_type;
+      ids with versions as in the FASTA), genes.csv (gene_id, gene_name, gene_type, chrom,
+      length = exonic length, overlapping exons counted once), index.json (organism, source,
+      assembly, salmon_version, kmer_len, decoys, counts, inputs with sha256), provenance.json.
+    mediaTypes:
+      - application/octet-stream
+      - text/csv
+      - application/json

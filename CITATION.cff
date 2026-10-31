@@ -1,0 +1,225 @@
+cff-version: "1.2.0"
+message: If you use this app, please cite it and the works it builds on, listed under references.
+type: software
+title: RNA-seq Reference Index
+abstract: Builds a salmon index (optionally with the genome as decoys), a transcript-to-gene table and a gene
+  table from a transcriptome FASTA, genome FASTA and GTF, once per genome, for the bulk RNA-seq workflows.
+authors:
+- name: Pennsieve (University of Pennsylvania)
+repository-code: https://github.com/pennsieve-apps/rnaseq-index
+license: Apache-2.0
+version: 0.1.0
+keywords:
+- bulk-rna-seq
+- transcriptomics
+- salmon
+- reference
+references:
+- type: article
+  title: 'Salmon provides fast and bias-aware quantification of transcript expression'
+  authors:
+  - family-names: 'Patro'
+    given-names: 'Rob'
+  - family-names: 'Duggal'
+    given-names: 'Geet'
+  - family-names: 'Love'
+    given-names: 'Michael I'
+  - family-names: 'Irizarry'
+    given-names: 'Rafael A'
+  - family-names: 'Kingsford'
+    given-names: 'Carl'
+  year: 2017
+  journal: 'Nature Methods'
+  volume: 14
+  issue: '4'
+  start: '417'
+  end: '419'
+  doi: 10.1038/nmeth.4197
+  identifiers:
+  - type: other
+    value: 'pmid:28263959'
+    description: PubMed ID
+- type: article
+  title: 'Alignment and mapping methodology influence transcript abundance estimation'
+  authors:
+  - family-names: 'Srivastava'
+    given-names: 'Avi'
+  - family-names: 'Malik'
+    given-names: 'Laraib'
+  - family-names: 'Sarkar'
+    given-names: 'Hirak'
+  - family-names: 'Zakeri'
+    given-names: 'Mohsen'
+  - family-names: 'Almodaresi'
+    given-names: 'Fatemeh'
+  - family-names: 'Soneson'
+    given-names: 'Charlotte'
+  - family-names: 'Love'
+    given-names: 'Michael I.'
+  - family-names: 'Kingsford'
+    given-names: 'Carl'
+  - family-names: 'Patro'
+    given-names: 'Rob'
+  year: 2020
+  journal: 'Genome Biology'
+  volume: 21
+  issue: '1'
+  start: '239'
+  doi: 10.1186/s13059-020-02151-8
+  identifiers:
+  - type: other
+    value: 'pmid:32894187'
+    description: PubMed ID
+- type: article
+  title: 'GENCODE 2025: reference gene annotation for human and mouse'
+  authors:
+  - family-names: 'Mudge'
+    given-names: 'Jonathan M'
+    orcid: https://orcid.org/0000-0003-4789-7495
+  - family-names: 'Carbonell-Sala'
+    given-names: 'Sílvia'
+  - family-names: 'Diekhans'
+    given-names: 'Mark'
+    orcid: https://orcid.org/0000-0002-0430-0989
+  - family-names: 'Martinez'
+    given-names: 'Jose Gonzalez'
+  - family-names: 'Hunt'
+    given-names: 'Toby'
+  - family-names: 'Jungreis'
+    given-names: 'Irwin'
+    orcid: https://orcid.org/0000-0002-3197-5367
+  - family-names: 'Loveland'
+    given-names: 'Jane E'
+    orcid: https://orcid.org/0000-0002-7669-2934
+  - family-names: 'Arnan'
+    given-names: 'Carme'
+    orcid: https://orcid.org/0000-0002-7431-2088
+  - family-names: 'Barnes'
+    given-names: 'If'
+  - family-names: 'Bennett'
+    given-names: 'Ruth'
+  - family-names: 'Berry'
+    given-names: 'Andrew'
+  - family-names: 'Bignell'
+    given-names: 'Alexandra'
+  - family-names: 'Cerdán-Vélez'
+    given-names: 'Daniel'
+  - family-names: 'Cochran'
+    given-names: 'Kelly'
+  - family-names: 'Cortés'
+    given-names: 'Lucas T'
+  - family-names: 'Davidson'
+    given-names: 'Claire'
+  - family-names: 'Donaldson'
+    given-names: 'Sarah'
+  - family-names: 'Dursun'
+    given-names: 'Cagatay'
+  - family-names: 'Fatima'
+    given-names: 'Reham'
+  - family-names: 'Hardy'
+    given-names: 'Matthew'
+  - family-names: 'Hebbar'
+    given-names: 'Prajna'
+  - family-names: 'Hollis'
+    given-names: 'Zoe'
+  - family-names: 'James'
+    given-names: 'Benjamin T'
+  - family-names: 'Jiang'
+    given-names: 'Yunzhe'
+  - family-names: 'Johnson'
+    given-names: 'Rory'
+  - family-names: 'Kaur'
+    given-names: 'Gazaldeep'
+  - family-names: 'Kay'
+    given-names: 'Mike'
+  - family-names: 'Mangan'
+    given-names: 'Riley J'
+  - family-names: 'Maquedano'
+    given-names: 'Miguel'
+  - family-names: 'Gómez'
+    given-names: 'Laura Martínez'
+  - family-names: 'Mathlouthi'
+    given-names: 'Nourhen'
+  - family-names: 'Merritt'
+    given-names: 'Ryan'
+  - family-names: 'Ni'
+    given-names: 'Pengyu'
+  - family-names: 'Palumbo'
+    given-names: 'Emilio'
+  - family-names: 'Perteghella'
+    given-names: 'Tamara'
+  - family-names: 'Pozo'
+    given-names: 'Fernando'
+  - family-names: 'Raj'
+    given-names: 'Shriya'
+  - family-names: 'Sisu'
+    given-names: 'Cristina'
+  - family-names: 'Steed'
+    given-names: 'Emily'
+  - family-names: 'Sumathipala'
+    given-names: 'Dulika'
+  - family-names: 'Suner'
+    given-names: 'Marie-Marthe'
+    orcid: https://orcid.org/0000-0002-0380-7171
+  - family-names: 'Uszczynska-Ratajczak'
+    given-names: 'Barbara'
+  - family-names: 'Wass'
+    given-names: 'Elizabeth'
+  - family-names: 'Yang'
+    given-names: 'Yucheng T'
+  - family-names: 'Zhang'
+    given-names: 'Dingyao'
+  - family-names: 'Finn'
+    given-names: 'Robert D'
+    orcid: https://orcid.org/0000-0001-8626-2148
+  - family-names: 'Gerstein'
+    given-names: 'Mark'
+  - family-names: 'Guigó'
+    given-names: 'Roderic'
+  - family-names: 'Hubbard'
+    given-names: 'Tim J P'
+  - family-names: 'Kellis'
+    given-names: 'Manolis'
+  - family-names: 'Kundaje'
+    given-names: 'Anshul'
+    orcid: https://orcid.org/0000-0003-3084-2287
+  - family-names: 'Paten'
+    given-names: 'Benedict'
+    orcid: https://orcid.org/0000-0001-8863-3539
+  - family-names: 'Tress'
+    given-names: 'Michael L'
+    orcid: https://orcid.org/0000-0001-9046-6370
+  - family-names: 'Birney'
+    given-names: 'Ewan'
+    orcid: https://orcid.org/0000-0001-8314-8497
+  - family-names: 'Martin'
+    given-names: 'Fergal J'
+    orcid: https://orcid.org/0000-0002-1672-050X
+  - family-names: 'Frankish'
+    given-names: 'Adam'
+    orcid: https://orcid.org/0000-0002-4333-628X
+  year: 2025
+  journal: 'Nucleic Acids Research'
+  volume: 53
+  issue: 'D1'
+  start: 'D966'
+  end: 'D975'
+  doi: 10.1093/nar/gkae1078
+  identifiers:
+  - type: other
+    value: 'pmid:39565199'
+    description: PubMed ID
+- type: software
+  title: salmon
+  authors:
+  - name: 'Rob Patro and the COMBINE-lab'
+  version: 2.8.0
+  license: BSD-3-Clause
+  repository-code: https://github.com/COMBINE-lab/salmon
+- type: data
+  title: 'GENCODE mouse release M39 (GRCm39)'
+  authors:
+  - name: 'GENCODE consortium'
+  year: 2025
+  url: https://www.gencodegenes.org/mouse/release_M39.html
+  notes: 'Transcript sequences, comprehensive gene annotation and primary-assembly genome used to build the demo index.'
