@@ -67,6 +67,10 @@ def test_build_without_genome(tmp_path, monkeypatch):
     assert run(fx, tmp_path / "out", monkeypatch, ORGANISM="mouse (test)", SOURCE="custom") == 0
     info = json.loads((tmp_path / "out" / "index.json").read_text())
     assert info["decoys"] is False and info["organism"] == "mouse (test)" and info["source"] == "custom"
+    assert info["detected_source"] == "GENCODE M39" and info["index_version"] and info["sshash_format_version"]
+    prov = json.loads((tmp_path / "out" / "provenance.json").read_text())
+    # no decoys: no decoy paper; the GENCODE citation follows what was detected, not SOURCE
+    assert [c["doi"] for c in prov["citations"]] == ["10.1038/nmeth.4197", "10.1093/nar/gkae1078"]
 
 
 def test_wrong_annotation_fails(tmp_path, monkeypatch):
@@ -113,3 +117,46 @@ def test_ensembl_gtf_versions_and_names(tmp_path):
     assert A.describe(ann, gtf.name) == ("Rattus norvegicus", "Ensembl 115", "mRatBN7.2")
     # unversioned FASTA ids still match
     assert A.tx2gene_rows(["ENSRNOT1"], ann)[0][0]["gene_id"] == "ENSRNOG1.3"
+
+
+def test_truncated_gzip_fails_with_provenance_and_no_partial_outputs(tmp_path, monkeypatch):
+    fx = make_fixture(tmp_path / "in")
+    gtf = fx / "annotation" / "gencode.vM39.annotation.gtf.gz"
+    data = gtf.read_bytes()
+    gtf.write_bytes(data[: len(data) // 2])
+    out = tmp_path / "out"
+    assert run(fx, out, monkeypatch) == 1
+    prov = json.loads((out / "provenance.json").read_text())
+    assert prov["status"] == "failed" and "EOFError" in prov["error"]
+    assert [p.name for p in out.iterdir()] == ["provenance.json"]
+
+
+def test_symlinks_out_of_the_input_are_not_read(tmp_path, caplog):
+    fx = make_fixture(tmp_path / "in")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "secret.gtf").write_text("x")
+    # links the platform places at the root or in a port's folder are trusted; deeper ones must stay inside
+    (fx / "annotation" / "deeper").mkdir()
+    (fx / "annotation" / "deeper" / "escape.gtf").symlink_to(outside / "secret.gtf")
+    (fx / "annotation" / "deeper" / "escape-dir").symlink_to(outside, target_is_directory=True)
+    found = app.find_inputs(fx)
+    assert found["annotation"].name == "gencode.vM39.annotation.gtf.gz"
+    assert "annotation/deeper/escape.gtf: resolves outside the input" in caplog.text
+    assert "annotation/deeper/escape-dir: resolves outside the input" in caplog.text
+    # port folders that are themselves links (as the platform links inputs) are followed
+    linked = tmp_path / "linked"
+    linked.mkdir()
+    for port in ("transcriptome", "annotation"):
+        (linked / port).symlink_to(fx / port, target_is_directory=True)
+    found = app.find_inputs(linked)
+    assert found["transcriptome"] is not None and found["annotation"] is not None
+
+
+def test_threads_without_a_quota_use_the_available_cpus(monkeypatch):
+    from processor import safe_inputs
+
+    monkeypatch.setattr(safe_inputs, "_cgroup_cpus", lambda: None)
+    assert safe_inputs.cpu_threads(3) == 3
+    assert safe_inputs.cpu_threads(0) == (len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity")
+                                          else os.cpu_count())

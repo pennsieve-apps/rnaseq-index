@@ -34,8 +34,9 @@ parameters:
     type: integer
     label: k-mer length
     description: >-
-      salmon's k (odd, 15-31). 31 suits reads of 75 bp and longer; use a smaller k (e.g. 23
-      or 25) for reads shorter than about 50 bp.
+      salmon's k (odd, 15-31), the minimum length of a match. salmon's documentation: k = 31
+      "seems to work well for reads of 75bp or longer, but you might consider a smaller k if
+      you plan to deal with shorter reads".
     defaultValue: 31
     min: 15
     max: 31
@@ -87,7 +88,9 @@ inputs:
     description: >-
       The GTF of the same release as the transcriptome (e.g. gencode.vM39.annotation.gtf.gz):
       gives each transcript its gene, gene names and types, chromosomes and gene lengths.
+      Plain or gzipped.
     mediaTypes:
+      - text/plain
       - application/gzip
     formats:
       - format_2306

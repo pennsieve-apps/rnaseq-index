@@ -39,12 +39,20 @@ annotation; one FASTA is the transcriptome; with two, the one named like a genom
 
 | Name | Default | Effect |
 |---|---|---|
-| `KMER_LEN` | `31` | salmon's k (odd, 15–31). 31 for reads ≥ 75 bp; 23–25 for reads under ~50 bp. |
+| `KMER_LEN` | `31` | salmon's k (odd, 15–31): the minimum match length. salmon's (1.x) documentation: k = 31 "seems to work well for reads of 75bp or longer, but you might consider a smaller k if you plan to deal with shorter reads". The demo's 50 bp reads mapped at 87–89 % with 31. |
 | `ORGANISM` | empty | Written to `index.json`. Empty: from the GENCODE GTF header (human, mouse) or an Ensembl GTF file name (`Genus_species.Assembly.Release.gtf.gz`). |
 | `SOURCE` | empty | Written to `index.json` (e.g. `GENCODE M39`). Empty: from the GTF header / file name, else the GTF file name. |
 | `THREADS` | `0` | Threads for salmon; 0 = the container's CPU quota. |
 
-Bad values exit 2 before anything is read.
+Bad values exit 2 before anything is read. A failed build (bad or truncated input, salmon
+error) exits 1 and leaves only `provenance.json` (with the error) in the output: no half-built
+index is left to be linked by mistake.
+
+Files are read only inside the input (`processor/safe_inputs.py`, shared verbatim by the
+workflow apps): symlinks are followed while they resolve inside `INPUT_DIR` or inside the
+targets of the links the platform places at its root or in a port's folder; anything else is
+skipped and logged. A truncated or corrupt gzip input fails the run with exit 1 and the error
+in `provenance.json`.
 
 ## Outputs
 
@@ -63,8 +71,14 @@ Bad values exit 2 before anything is read.
 ## Runtime
 
 `computeTypes: [standard]`, 8 vCPU / 30 GiB, 4 h timeout. salmon's external k-mer sort gets
-half of the container's memory (`--ramLimit`); the build's scratch files go to `/tmp`
-(ephemeral disk: ~8 GB for mouse transcripts + genome).
+half of the container's memory (`--ramLimit`). The build's scratch files (cleaned FASTA,
+compacted de Bruijn graph, sort buckets) go to `/tmp`: 3.9 GB at most for the mouse
+transcriptome (measured) and at least 7.6 GB with the genome as decoys (seen before that build
+was killed).
+On the platform `/tmp` is the task's disk (Fargate ephemeral storage, 20 GiB by default), so
+no memory is used for it; size the task's ephemeral storage to at least 2x the scratch plus
+the index. Run locally with `/tmp` on a disk (`-v $PWD/tmp:/tmp`), not a tmpfs: a tmpfs
+counts the scratch against the container's memory.
 
 Measured with `docker run --platform linux/amd64 --cpus 4 --memory 6g` (amd64 emulation on an
 M-series Mac; native amd64 is faster), GENCODE mouse M39 (481,956 transcripts, 78,374 genes),
@@ -84,6 +98,10 @@ decoy build once on `standard` with that size and check `peak_rss_mb` in `proven
 The transcripts-only index fits in 8 GiB.
 
 Image: 213 MB (salmon 22 MB + python:3.12-slim).
+
+salmon 2.9.0 was released on 2026-10-31 (faster indexing with less memory, byte-reproducible
+indexes, index format v3). This version stays on 2.8.0 (index format v2); moving to 2.9 means
+rebuilding every index, and rnaseq-quant checks the index format (see its README).
 
 ## Limitations
 

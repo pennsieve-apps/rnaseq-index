@@ -20,11 +20,13 @@ import shutil
 import subprocess
 import sys
 import time
+import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 
 from processor import annotation as A
 from processor import resources
+from processor.safe_inputs import InputDir, UnsafeInput, cpu_threads
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger("rnaseq-index")
@@ -65,27 +67,14 @@ def read_parameters(env=os.environ) -> dict:
     return {"KMER_LEN": k, "ORGANISM": raw["ORGANISM"], "SOURCE": raw["SOURCE"], "THREADS": threads}
 
 
-def walk_files(root: Path) -> list[Path]:
-    """Every file under root (symlinks followed, loops and hidden entries skipped), sorted."""
-    out, seen = [], set()
-    for dirpath, dirnames, filenames in os.walk(root, followlinks=True):
-        real = os.path.realpath(dirpath)
-        if real in seen:
-            dirnames[:] = []
-            continue
-        seen.add(real)
-        dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
-        out += [Path(dirpath, f) for f in sorted(filenames) if not f.startswith(".") and Path(dirpath, f).is_file()]
-    return out
-
-
 def find_inputs(root: Path) -> dict[str, Path | None]:
     """
     transcriptome, genome (optional) and annotation: from INPUT_DIR/<port>/ when linked, else by
     name anywhere under INPUT_DIR (one GTF; one FASTA = the transcriptome; with two, the one named
-    like a genome (genome, primary_assembly, toplevel, .dna.) is the genome).
+    like a genome (genome, primary_assembly, toplevel, .dna.) is the genome). Only files inside the
+    input are seen (safe_inputs: symlinks that lead out are skipped and logged).
     """
-    files = walk_files(root)
+    files = InputDir(root).walk()
     by_port: dict[str, list[Path]] = {p: [] for p in PORTS}
     loose_fasta, loose_gtf = [], []
     for f in files:
@@ -149,6 +138,9 @@ def write_json(path: Path, data) -> None:
     path.write_text(json.dumps(data, indent=2) + "\n")
 
 
+OUTPUT_FILES = ("salmon", "tx2gene.csv", "genes.csv", "index.json")
+
+
 def build(input_dir: Path, output_dir: Path, params: dict, timings: dict) -> dict:
     t0 = time.monotonic()
     found = find_inputs(input_dir)
@@ -185,11 +177,9 @@ def build(input_dir: Path, output_dir: Path, params: dict, timings: dict) -> dic
     build_dir = Path("/tmp") / "rnaseq-index-build"
     shutil.rmtree(build_dir, ignore_errors=True)
     build_dir.mkdir(parents=True)
-    n_threads = resources.threads(params["THREADS"])
-    cmd = [SALMON, "index", "-t", str(tx), "-i", str(output_dir / "salmon"), "-k", str(params["KMER_LEN"]),
-           "-p", str(n_threads), "--tmpdir", str(build_dir)]
-    if gencode:
-        cmd.append("--gencode")
+    n_threads = cpu_threads(params["THREADS"])
+    targets = [str(tx)]
+    extra: list[str] = ["--gencode"] if gencode else []
     decoys: list[str] = []
     if genome is not None:
         t1 = time.monotonic()
@@ -199,10 +189,12 @@ def build(input_dir: Path, output_dir: Path, params: dict, timings: dict) -> dic
             raise InputError(f"{rel['genome']}: " + ("no FASTA records" if not decoys else
                              f"{len(clash)} sequence names are also transcript ids (e.g. {sorted(clash)[0]})"))
         (build_dir / "decoys.txt").write_text("\n".join(decoys) + "\n")
-        cmd[3:4] = [str(tx), str(genome)]          # decoy records must come last
-        cmd += ["-d", str(build_dir / "decoys.txt")]
+        targets.append(str(genome))                # decoy records must come last
+        extra += ["-d", str(build_dir / "decoys.txt")]
         timings["decoy_names"] = round(time.monotonic() - t1, 1)
         log.info("genome: %d sequences used as decoys", len(decoys))
+    cmd = [SALMON, "index", "-t", *targets, "-i", str(output_dir / "salmon"), "-k", str(params["KMER_LEN"]),
+           "-p", str(n_threads), "--tmpdir", str(build_dir), *extra]
     limit = resources.memory_limit()
     if limit:
         # sshash's external sort: half the container's memory, the rest is for the other build stages
@@ -220,11 +212,15 @@ def build(input_dir: Path, output_dir: Path, params: dict, timings: dict) -> dic
     t3 = time.monotonic()
     inputs = {k: {"file": rel[k], "sha256": sha256(v)} for k, v in found.items() if v is not None}
     timings["checksums"] = round(time.monotonic() - t3, 1)
+    salmon_info = json.loads((output_dir / "salmon" / "info.json").read_text())
     index_doc = {
         "organism": params["ORGANISM"] or organism or "unknown",
         "source": params["SOURCE"] or source,
+        "detected_source": source,
         "assembly": assembly,
         "salmon_version": salmon_version(),
+        "index_version": salmon_info.get("index_version"),
+        "sshash_format_version": salmon_info.get("sshash_format_version"),
         "kmer_len": params["KMER_LEN"],
         "decoys": genome is not None,
         "n_decoy_sequences": len(decoys),
@@ -244,7 +240,7 @@ def citations(index_doc: dict | None) -> list[dict]:
     out = [CITATIONS["salmon"]]
     if index_doc and index_doc["decoys"]:
         out.append(CITATIONS["decoys"])
-    if index_doc and index_doc["source"].startswith("GENCODE"):
+    if index_doc and index_doc["detected_source"].startswith("GENCODE"):
         out.append(CITATIONS["gencode"])
     return out
 
@@ -261,15 +257,18 @@ def main() -> int:
     except ValueError as exc:
         log.error("bad parameter: %s", exc)
         return 2
-    input_dir, output_dir = Path(input_dir), Path(output_dir)
+    input_dir, output_dir = Path(input_dir).absolute(), Path(output_dir).absolute()
     output_dir.mkdir(parents=True, exist_ok=True)
     timings: dict[str, float] = {}
     status, error, index_doc = "ok", None, None
     try:
         index_doc = build(input_dir, output_dir, params, timings)
-    except (InputError, ValueError, OSError, subprocess.CalledProcessError) as exc:
-        status, error = "failed", str(exc)
-        log.error("%s", exc)
+    except (InputError, UnsafeInput, ValueError, OSError, EOFError, zlib.error, subprocess.CalledProcessError) as exc:
+        status, error = "failed", f"{type(exc).__name__}: {exc}" if isinstance(exc, (EOFError, zlib.error)) else str(exc)
+        log.error("%s", error)
+        for name in OUTPUT_FILES:                  # no half-built index: only provenance.json stays
+            p = output_dir / name
+            shutil.rmtree(p, ignore_errors=True) if p.is_dir() else p.unlink(missing_ok=True)
     peak = resources.peak_rss_mb()
     provenance = {
         "app": APP_NAME,
@@ -284,7 +283,7 @@ def main() -> int:
         "error": error,
         "seconds": round(time.monotonic() - t_start, 1),
         "timings": timings,
-        "threads": resources.threads(params["THREADS"]),
+        "threads": cpu_threads(params["THREADS"]),
         "peak_rss_mb": max(peak.values()),
         "peak_rss_mb_by_process": peak,
         "cgroup_peak_mb": resources.cgroup_peak_mb(),
