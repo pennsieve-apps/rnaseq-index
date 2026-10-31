@@ -20,7 +20,7 @@ mkdir -p in/transcriptome in/annotation in/genome
 ln -s $PWD/$R/gencode.vM39.transcripts.fa.gz in/transcriptome/
 ln -s $PWD/$R/gencode.vM39.annotation.gtf.gz in/annotation/
 ln -s $PWD/$R/GRCm39.primary_assembly.genome.fa.gz in/genome/     # optional: decoys
-docker run --rm --platform linux/amd64 --memory 7g --network none --read-only --tmpfs /tmp:size=20g \
+mkdir -p tmp && docker run --rm --platform linux/amd64 --memory 6g --network none --read-only -v $PWD/tmp:/tmp \
   -e INPUT_DIR=/data/input -e OUTPUT_DIR=/data/output \
   -v $PWD/in:/data/input:ro -v $PWD/out:/data/output rnaseq-index:dev
 ```

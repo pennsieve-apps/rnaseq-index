@@ -174,7 +174,12 @@ def build(input_dir: Path, output_dir: Path, params: dict, timings: dict) -> dic
         log.warning("%d of %d transcripts are not in the annotation; each is its own gene (e.g. %s)",
                     len(missing), len(ids), ", ".join(missing[:3]))
     genes = A.gene_rows(tx_rows, ann)
-    log.info("%d transcripts, %d genes, GENCODE headers: %s (%.1fs)", len(tx_rows), len(genes), gencode,
+    organism, source, assembly = A.describe(ann, gtf.name)
+    write_csv(output_dir / "tx2gene.csv", ["transcript_id", "gene_id", "gene_name", "gene_type"], tx_rows)
+    write_csv(output_dir / "genes.csv", ["gene_id", "gene_name", "gene_type", "chrom", "length"], genes)
+    n_tx, n_genes = len(tx_rows), len(genes)
+    del ann, tx_rows, genes            # the GTF tables are not needed while salmon builds (memory)
+    log.info("%d transcripts, %d genes, GENCODE headers: %s (%.1fs)", n_tx, n_genes, gencode,
              timings["annotation"])
 
     build_dir = Path("/tmp") / "rnaseq-index-build"
@@ -212,9 +217,6 @@ def build(input_dir: Path, output_dir: Path, params: dict, timings: dict) -> dic
         raise InputError(f"salmon index failed with exit code {proc.returncode} (see the log above)")
     log.info("salmon index built in %.1fs", timings["salmon_index"])
 
-    write_csv(output_dir / "tx2gene.csv", ["transcript_id", "gene_id", "gene_name", "gene_type"], tx_rows)
-    write_csv(output_dir / "genes.csv", ["gene_id", "gene_name", "gene_type", "chrom", "length"], genes)
-    organism, source, assembly = A.describe(ann, gtf.name)
     t3 = time.monotonic()
     inputs = {k: {"file": rel[k], "sha256": sha256(v)} for k, v in found.items() if v is not None}
     timings["checksums"] = round(time.monotonic() - t3, 1)
@@ -227,8 +229,8 @@ def build(input_dir: Path, output_dir: Path, params: dict, timings: dict) -> dic
         "decoys": genome is not None,
         "n_decoy_sequences": len(decoys),
         "gencode_headers": gencode,
-        "n_transcripts": len(tx_rows),
-        "n_genes": len(genes),
+        "n_transcripts": n_tx,
+        "n_genes": n_genes,
         "n_transcripts_not_in_annotation": len(missing),
         "inputs": inputs,
         "files": {"salmon": "salmon/", "tx2gene": "tx2gene.csv", "genes": "genes.csv"},
